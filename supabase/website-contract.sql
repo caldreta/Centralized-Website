@@ -1,107 +1,145 @@
--- =============================================================================
--- PharmaLink public website: read-only data contract
--- =============================================================================
--- The public website reads ONLY the two views below, using the Supabase
--- anon/publishable key. It never touches the inventory/POS tables directly.
---
--- Why views:
---   * Prices, quantities, sales, returns and prescription references stay
---     private. The website cannot select a column that is not in a view.
---   * The inventory/POS team can rename or restructure its tables freely as
---     long as these two views keep the same columns.
---
--- HOW TO USE: replace the FROM clauses marked "ADAPT" with the real
--- inventory/POS tables once the schema is final. Keep the column names,
--- types and allowed values exactly as listed, because the website depends on them.
--- =============================================================================
+-- #####################################################################
+-- #  FILE 6:  website-contract.sql   (run AFTER 01, 02, 03, 04 and 05)
+-- #  PharmaLink - read-only views for the public Centralized Website
+-- #
+-- #  HOW TO RUN: new blank query -> paste everything -> Run.
+-- #  Safe to run again: it drops and recreates only its own two views.
+-- #  It stops by itself if 05_integration.sql has not been run.
+-- #
+-- #  WHAT IT ADDS
+-- #    * website_pharmacies             one row per listed branch
+-- #    * website_medicine_availability  one row per medicine per branch,
+-- #                                     with a stock STATUS only
+-- #
+-- #  The website (anon key) can read these two views and nothing new.
+-- #  They never expose prices, quantities, batches, suppliers, costs,
+-- #  staff, customers, sales or prescriptions.
+-- #####################################################################
+
+begin;
+
+do $$
+begin
+  if to_regclass('public.integration_source') is null then
+    raise exception 'STOP: run 01 to 05 first.';
+  end if;
+end $$;
+
+drop view if exists public.website_medicine_availability;
+drop view if exists public.website_pharmacies;
 
 
--- -----------------------------------------------------------------------------
--- 1. Participating pharmacies (one row per listed pharmacy)
--- -----------------------------------------------------------------------------
--- id              uuid      not null   stable id, used in /pharmacies/<id> URLs
--- name            text      not null
--- address         text      not null   full street address
--- city            text      not null   'Trece Martires City' | 'Tanza' | 'General Trias City'
--- contact_number  text      null       shown as a tap-to-call link
--- latitude        float8    not null   WGS84, e.g. 14.275313
--- longitude       float8    not null   WGS84, e.g. 120.871141
--- opening_hours   text      null       free text, e.g. 'Mon-Sat 8:00 AM - 9:00 PM'
--- -----------------------------------------------------------------------------
-create or replace view public.website_pharmacies
-with (security_invoker = false)  -- runs as the view owner, so anon needs no table access
+-- ---------------------------------------------------------------------
+-- 1. Listed pharmacies (a "pharmacy" on the website = one branch)
+--    Shown only when the branch and its pharmacy are active and the
+--    branch has map coordinates.
+-- ---------------------------------------------------------------------
+create view public.website_pharmacies
+with (security_invoker = false)   -- runs as the owner, so anon needs no table access
 as
 select
-  p.id,
-  p.name,
-  p.address,
-  p.city,
-  p.contact_number,
-  p.latitude::float8  as latitude,
-  p.longitude::float8 as longitude,
-  p.opening_hours
-from public.pharmacies p            -- ADAPT: real pharmacies table
-where p.is_active = true;           -- ADAPT: only pharmacies that agreed to be listed
+  b.branch_id                                        as id,
+  case
+    when lower(trim(b.branch_name)) = lower(trim(ph.pharmacy_name))
+      then ph.pharmacy_name
+    else ph.pharmacy_name || ' – ' || b.branch_name
+  end::text                                          as name,
+  concat_ws(', ',
+    nullif(trim(concat_ws(' ', b.house_number, b.street)), ''),
+    b.barangay,
+    b.city_municipality,
+    nullif(trim(concat_ws(' ', b.province, b.postal_code)), '')
+  )                                                  as address,
+  b.city_municipality::text                          as city,
+  coalesce(b.contact_number, ph.contact_number)::text as contact_number,
+  b.latitude::float8                                 as latitude,
+  b.longitude::float8                                as longitude,
+  null::text                                         as opening_hours   -- not in the schema yet
+from public.pharmacy_branch b
+join public.pharmacy ph on ph.pharmacy_id = b.pharmacy_id
+where b.status = 'active'
+  and ph.status = 'active'
+  and b.latitude  is not null
+  and b.longitude is not null;
 
 
--- -----------------------------------------------------------------------------
--- 2. Medicine availability (one row per medicine per pharmacy)
--- -----------------------------------------------------------------------------
--- pharmacy_id     uuid         not null   -> website_pharmacies.id
--- medicine_id     uuid         not null   the pharmacy's own medicine/product id
--- generic_name    text         not null   e.g. 'Paracetamol'
--- brand_name      text         null       e.g. 'Biogesic'
--- strength        text         null       e.g. '500 mg'
--- dosage_form     text         null       e.g. 'Tablet', 'Capsule', 'Syrup'
--- category        text         not null   'prescription' | 'otc'
--- stock_status    text         not null   'in_stock' | 'low_stock' | 'out_of_stock'
--- updated_at      timestamptz  not null   when the stock last changed
---
--- stock_status is computed by the inventory/POS side (for example from
--- quantity vs. low-stock threshold, excluding expired batches). The website
--- only displays it. Do NOT add price or quantity columns to this view.
--- Non-medicine products (personal care, etc.) should be filtered out here.
--- -----------------------------------------------------------------------------
-create or replace view public.website_medicine_availability
+-- ---------------------------------------------------------------------
+-- 2. Medicine availability per branch
+--    Status uses the same rule as v_inventory_status:
+--      available = active, unexpired batches minus quantity_reserved
+--      0 or less -> out_of_stock, at or below reorder_level -> low_stock
+--    It is computed here directly (not via v_inventory_status) so it does
+--    not depend on that view's invoker rights.
+--    Only medicines are listed (product_type = 'medicine').
+-- ---------------------------------------------------------------------
+create view public.website_medicine_availability
 with (security_invoker = false)
 as
+with stock as (
+  select
+    i.inventory_id,
+    coalesce(sum(mb.quantity_remaining) filter (
+      where mb.batch_status = 'active'
+        and (mb.expiration_date is null or mb.expiration_date >= current_date)), 0) as on_hand,
+    max(mb.updated_at) as batch_updated_at
+  from public.inventory i
+  left join public.medicine_batch mb on mb.inventory_id = i.inventory_id
+  group by i.inventory_id
+)
 select
-  m.pharmacy_id,
-  m.id            as medicine_id,
-  m.generic_name,
-  m.brand_name,
-  m.strength,
-  m.dosage_form,
-  m.category,      -- ADAPT: map to 'prescription' | 'otc'
-  m.stock_status,  -- ADAPT: map to 'in_stock' | 'low_stock' | 'out_of_stock'
-  m.updated_at
-from public.medicines m             -- ADAPT: real medicine/stock table(s)
-join public.pharmacies p on p.id = m.pharmacy_id and p.is_active = true
-where m.category in ('prescription', 'otc');
+  i.branch_id                                   as pharmacy_id,
+  p.product_id                                  as medicine_id,
+  coalesce(p.generic_name, p.name)::text        as generic_name,
+  p.brand_name::text                            as brand_name,
+  p.strength::text                              as strength,
+  df.form_name::text                            as dosage_form,
+  case when p.prescription_class in ('Rx', 'Controlled')
+       then 'prescription' else 'otc' end       as category,
+  case
+    when greatest(s.on_hand - i.quantity_reserved, 0) <= 0             then 'out_of_stock'
+    when greatest(s.on_hand - i.quantity_reserved, 0) <= i.reorder_level then 'low_stock'
+    else 'in_stock'
+  end                                           as stock_status,
+  -- When the stock was last confirmed: the last successful sync for
+  -- integrated branches, otherwise the last batch change.
+  coalesce(src.last_success_at, s.batch_updated_at, i.created_at) as updated_at
+from public.inventory i
+join stock s                    on s.inventory_id = i.inventory_id
+join public.product p           on p.product_id = i.product_id
+left join public.dosage_form df on df.dosage_form_id = p.dosage_form_id
+join public.pharmacy_branch b   on b.branch_id = i.branch_id
+join public.pharmacy ph         on ph.pharmacy_id = b.pharmacy_id
+left join public.integration_source src
+       on src.branch_id = b.branch_id and src.is_active
+where i.is_active
+  and p.is_active
+  and p.product_type = 'medicine'
+  and b.status = 'active'
+  and ph.status = 'active'
+  and b.latitude  is not null
+  and b.longitude is not null;
 
 
--- -----------------------------------------------------------------------------
--- 3. Permissions: the anon role may read the two views and nothing else
--- -----------------------------------------------------------------------------
-revoke all on public.website_pharmacies            from anon, authenticated;
-revoke all on public.website_medicine_availability from anon, authenticated;
-grant select on public.website_pharmacies            to anon, authenticated;
-grant select on public.website_medicine_availability to anon, authenticated;
+-- ---------------------------------------------------------------------
+-- 3. Permissions: read-only, and only these two views
+--    (Supabase grants new views to anon by default, so revoke first.)
+-- ---------------------------------------------------------------------
+revoke all on public.website_pharmacies, public.website_medicine_availability
+  from public, anon, authenticated;
+grant select on public.website_pharmacies, public.website_medicine_availability
+  to anon, authenticated;
 
--- The underlying inventory/POS tables must have RLS enabled and NO policy
--- that lets the anon role read them, e.g.:
---   alter table public.pharmacies enable row level security;
---   alter table public.medicines  enable row level security;
--- (Supabase's linter will flag the views as "security definer views". That is
---  intentional here: it is what lets anon read safe columns without being able
---  to read the tables themselves.)
+commit;
 
 
--- -----------------------------------------------------------------------------
--- 4. Recommended indexes on the underlying table for name search
--- -----------------------------------------------------------------------------
--- create extension if not exists pg_trgm;
--- create index if not exists medicines_generic_name_trgm
---   on public.medicines using gin (generic_name gin_trgm_ops);
--- create index if not exists medicines_brand_name_trgm
---   on public.medicines using gin (brand_name gin_trgm_ops);
+-- ---------------------------------------------------------------------
+-- 4. RECOMMENDED, NOT RUN AUTOMATICALLY: stop the anon key reading prices
+--    and exact quantities.
+--    get_public_availability() and search_availability() (files 03-05)
+--    return selling_price and available_quantity and are executable by
+--    anon. Anyone holding the anon key can call them directly. The paper
+--    says prices are not shown publicly. Before running this, confirm the
+--    NestJS API does not call these two functions with the anon key.
+-- ---------------------------------------------------------------------
+-- revoke execute on function public.get_public_availability(text)          from anon;
+-- revoke execute on function public.search_availability(text, text, text)   from anon;

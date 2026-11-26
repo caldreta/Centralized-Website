@@ -21,10 +21,13 @@ pharmacies) and shows a yellow "Demo data" banner.
 
 ## Connect to the real database
 
-1. Ask the inventory/POS team to run [`supabase/website-contract.sql`](supabase/website-contract.sql),
-   after replacing the `ADAPT` lines with their real tables. It creates two views,
-   `website_pharmacies` and `website_medicine_availability`, and lets the anon key read
-   only those.
+1. In the Supabase SQL Editor, run [`supabase/website-contract.sql`](supabase/website-contract.sql)
+   **after** the inventory/POS files `01_inventory.sql` → `05_integration.sql`. It creates
+   two read-only views, `website_pharmacies` (one row per active branch with map
+   coordinates) and `website_medicine_availability` (stock *status* per medicine per
+   branch, never prices or quantities), and lets the anon key read only those. It is safe
+   to run again.
+   Branches need `latitude`/`longitude` set to appear on the site.
 2. Copy `.env.example` to `.env.local` and fill in `SUPABASE_URL` and `SUPABASE_ANON_KEY`
    (the anon/publishable key — **never** the `service_role` key).
 3. Restart `npm run dev`. The banner disappears once the keys are set.
