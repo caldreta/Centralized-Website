@@ -1,31 +1,42 @@
+import { CircleCheck, CircleMinus, CircleX } from "lucide-react";
+
 import { STATUS_LABEL } from "@/lib/pharmalink/format";
 import type { StockStatus } from "@/lib/pharmalink/types";
 import { cn } from "@/lib/utils";
 
 const STYLES: Record<StockStatus, string> = {
-  in_stock: "bg-status-in/12 text-status-in ring-status-in/30",
-  low_stock: "bg-status-low/15 text-[oklch(0.5_0.13_60)] ring-status-low/40",
-  out_of_stock: "bg-status-out/12 text-muted-foreground ring-status-out/30",
+  in_stock: "bg-status-in/12 text-status-in-text",
+  low_stock: "bg-status-low/18 text-status-low-text",
+  out_of_stock: "bg-muted text-muted-foreground",
 };
 
-export function StatusBadge({ status, className }: { status: StockStatus; className?: string }) {
+const ICONS = {
+  in_stock: CircleCheck,
+  low_stock: CircleMinus,
+  out_of_stock: CircleX,
+} as const;
+
+/** Status uses colour, an icon and a word, so it never relies on colour alone. */
+export function StatusBadge({
+  status,
+  size = "sm",
+  className,
+}: {
+  status: StockStatus;
+  size?: "sm" | "md";
+  className?: string;
+}) {
+  const Icon = ICONS[status];
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
+        "inline-flex shrink-0 items-center gap-1 rounded-full font-medium",
+        size === "md" ? "px-2.5 py-1 text-sm" : "px-2 py-0.5 text-xs",
         STYLES[status],
         className,
       )}
     >
-      <span
-        aria-hidden="true"
-        className={cn(
-          "size-1.5 rounded-full",
-          status === "in_stock" && "bg-status-in",
-          status === "low_stock" && "bg-status-low",
-          status === "out_of_stock" && "bg-status-out",
-        )}
-      />
+      <Icon aria-hidden="true" className={size === "md" ? "size-4" : "size-3.5"} />
       {STATUS_LABEL[status]}
     </span>
   );

@@ -4,8 +4,10 @@ import "leaflet/dist/leaflet.css";
 
 import L from "leaflet";
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+
+import { directionsUrl } from "@/lib/pharmalink/format";
 
 import type { MapPoint, PharmacyMapProps } from "./types";
 
@@ -42,30 +44,67 @@ function escapeHtml(text: string) {
   return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
-function FitToPoints({ points, user }: Pick<PharmacyMapProps, "points" | "user">) {
+/**
+ * Keeps the view sensible: fits all pins when the set changes, flies to the
+ * selected pin, and re-measures when the map is revealed (the phone List/Map
+ * switch hides it with display:none, which Leaflet sees as a 0×0 map).
+ */
+function MapController({
+  points,
+  user,
+  selectedId,
+}: Pick<PharmacyMapProps, "points" | "user" | "selectedId">) {
   const map = useMap();
-  const key = points.map((p) => p.id).join(",") + (user ? `|${user.latitude},${user.longitude}` : "");
-  useEffect(() => {
+  const key =
+    points.map((p) => p.id).join(",") + (user ? `|${user.latitude},${user.longitude}` : "");
+  const selected = points.find((p) => p.id === selectedId) ?? null;
+
+  const isVisible = useCallback(() => map.getContainer().clientWidth > 0, [map]);
+
+  const fitAll = useCallback(() => {
     const coords: L.LatLngTuple[] = points.map((p) => [p.latitude, p.longitude]);
     if (user) coords.push([user.latitude, user.longitude]);
     if (coords.length === 0) return;
-    if (coords.length === 1) {
-      map.setView(coords[0], 16);
-    } else {
-      map.fitBounds(L.latLngBounds(coords), { padding: [40, 40], maxZoom: 16 });
-    }
+    if (coords.length === 1) map.setView(coords[0], 16);
+    else map.fitBounds(L.latLngBounds(coords), { padding: [40, 40], maxZoom: 16 });
     // Refit only when the set of points changes, not on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, key]);
-  return null;
-}
 
-function FlyToSelected({ points, selectedId }: Pick<PharmacyMapProps, "points" | "selectedId">) {
-  const map = useMap();
-  const target = points.find((p) => p.id === selectedId);
+  const showCurrent = useCallback(() => {
+    if (selected) map.setView([selected.latitude, selected.longitude], Math.max(map.getZoom(), 15));
+    else fitAll();
+  }, [map, selected, fitAll]);
+
+  // Latest "what should be on screen", for the resize observer below.
+  const showCurrentRef = useRef(showCurrent);
   useEffect(() => {
-    if (target) map.flyTo([target.latitude, target.longitude], Math.max(map.getZoom(), 15));
-  }, [map, target]);
+    showCurrentRef.current = showCurrent;
+  }, [showCurrent]);
+
+  useEffect(() => {
+    if (isVisible()) fitAll();
+  }, [fitAll, isVisible]);
+
+  useEffect(() => {
+    if (selected && isVisible()) {
+      map.flyTo([selected.latitude, selected.longitude], Math.max(map.getZoom(), 15));
+    }
+  }, [map, selected, isVisible]);
+
+  useEffect(() => {
+    const el = map.getContainer();
+    let wasHidden = el.clientWidth === 0;
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+      const hidden = el.clientWidth === 0;
+      if (wasHidden && !hidden) showCurrentRef.current();
+      wasHidden = hidden;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [map]);
+
   return null;
 }
 
@@ -88,14 +127,24 @@ export default function PharmacyMapInner({
           eventHandlers={onSelect ? { click: () => onSelect(point.id) } : undefined}
         >
           <Popup>
-            <div className="space-y-1">
-              <p className="font-semibold">{point.name}</p>
+            <div className="min-w-44 space-y-1.5">
+              <p className="text-sm font-semibold">{point.name}</p>
               {point.popupDetail && <p className="text-xs">{point.popupDetail}</p>}
-              {point.href && (
-                <Link href={point.href} className="text-xs font-medium text-primary underline">
-                  View pharmacy
-                </Link>
-              )}
+              <div className="flex gap-3 pt-0.5 text-xs font-medium">
+                <a
+                  href={directionsUrl(point)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline"
+                >
+                  Directions
+                </a>
+                {point.href && (
+                  <Link href={point.href} className="text-primary underline">
+                    View pharmacy
+                  </Link>
+                )}
+              </div>
             </div>
           </Popup>
         </Marker>
@@ -120,8 +169,7 @@ export default function PharmacyMapInner({
       {user && (
         <Marker position={[user.latitude, user.longitude]} icon={userIcon} title="Your location" />
       )}
-      <FitToPoints points={points} user={user} />
-      <FlyToSelected points={points} selectedId={selectedId} />
+      <MapController points={points} user={user} selectedId={selectedId} />
     </MapContainer>
   );
 }

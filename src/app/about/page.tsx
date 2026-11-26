@@ -47,7 +47,7 @@ export default function AboutPage() {
           Studies, Lyceum of the Philippines University – Cavite.
         </p>
       </div>
-      <dl className="divide-y rounded-xl border bg-card">
+      <dl className="divide-y divide-border/60 rounded-2xl border bg-card shadow-[0_1px_3px_rgb(15_40_40/0.04)]">
         {FAQ.map((item) => (
           <div key={item.q} className="space-y-1 p-5">
             <dt className="font-medium">{item.q}</dt>

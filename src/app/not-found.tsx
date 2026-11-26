@@ -10,9 +10,14 @@ export default function NotFound() {
       <p className="text-sm text-muted-foreground">
         The page or pharmacy you’re looking for doesn’t exist or is no longer listed.
       </p>
-      <Link href="/" className={buttonVariants()}>
-        Back to search
-      </Link>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Link href="/" className={buttonVariants({ size: "lg" })}>
+          Search medicines
+        </Link>
+        <Link href="/pharmacies" className={buttonVariants({ size: "lg", variant: "outline" })}>
+          Browse pharmacies
+        </Link>
+      </div>
     </div>
   );
 }

@@ -12,7 +12,7 @@ export function PopularSearches({ className }: { className?: string }) {
         <Link
           key={name}
           href={`/search?q=${encodeURIComponent(name)}`}
-          className="rounded-full border bg-background px-3 py-1 transition-colors hover:border-primary/40 hover:bg-brand-soft"
+          className="rounded-full border bg-card px-3.5 py-1.5 transition-colors hover:border-primary/40 hover:bg-brand-soft hover:text-primary"
         >
           {name}
         </Link>

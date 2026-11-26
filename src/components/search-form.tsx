@@ -17,36 +17,41 @@ export function SearchForm({
 }) {
   const lg = size === "lg";
   return (
-    <Form action="/search" role="search" className={cn("flex w-full gap-2", className)}>
+    <Form
+      action="/search"
+      role="search"
+      className={cn(
+        "flex w-full items-center gap-2 rounded-2xl border bg-card p-1.5 shadow-[0_2px_8px_rgb(15_40_40/0.05)] transition-shadow focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30",
+        className,
+      )}
+    >
       <label htmlFor="medicine-search" className="sr-only">
         Medicine name
       </label>
-      <div className="relative flex-1">
-        <Search
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground",
-            lg ? "size-5" : "size-4",
-          )}
-        />
-        <input
-          id="medicine-search"
-          name="q"
-          type="search"
-          required
-          minLength={2}
-          maxLength={60}
-          autoComplete="off"
-          autoFocus={autoFocus}
-          defaultValue={defaultValue}
-          placeholder="Search a medicine, e.g. Paracetamol or Biogesic"
-          className={cn(
-            "w-full rounded-lg border border-input bg-background pr-3 shadow-xs outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40",
-            lg ? "h-12 pl-10 text-base" : "h-10 pl-9 text-sm",
-          )}
-        />
-      </div>
-      <Button type="submit" className={lg ? "h-12 px-5 text-base" : "h-10 px-4"}>
+      <Search
+        aria-hidden="true"
+        className={cn("ml-2.5 shrink-0 text-muted-foreground", lg ? "size-5" : "size-4.5")}
+      />
+      <input
+        id="medicine-search"
+        name="q"
+        type="search"
+        required
+        minLength={2}
+        maxLength={60}
+        autoComplete="off"
+        autoFocus={autoFocus}
+        defaultValue={defaultValue}
+        placeholder="Medicine name, e.g. Paracetamol"
+        className={cn(
+          "min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground",
+          lg ? "h-11 text-base sm:h-12 sm:text-lg" : "h-10 text-base",
+        )}
+      />
+      <Button
+        type="submit"
+        className={cn("shrink-0 rounded-xl font-semibold", lg ? "h-11 px-5 text-base sm:h-12 sm:px-6" : "h-10 px-5")}
+      >
         Search
       </Button>
     </Form>

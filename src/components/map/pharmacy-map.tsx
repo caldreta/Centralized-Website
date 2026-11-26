@@ -19,7 +19,7 @@ export function PharmacyMap({
 }: PharmacyMapProps & { className?: string }) {
   return (
     <div
-      className={cn("relative isolate overflow-hidden rounded-xl border bg-muted", className)}
+      className={cn("relative isolate overflow-hidden rounded-2xl border bg-muted shadow-[0_1px_3px_rgb(15_40_40/0.05)]", className)}
       role="region"
       aria-label="Map of pharmacies"
     >

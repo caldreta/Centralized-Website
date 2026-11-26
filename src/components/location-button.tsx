@@ -4,6 +4,7 @@ import { LocateFixed, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useUserLocation } from "@/hooks/use-user-location";
+import { cn } from "@/lib/utils";
 
 export function LocationButton() {
   const { location, requestLocation } = useUserLocation();
@@ -20,9 +21,12 @@ export function LocationButton() {
       <Button
         type="button"
         variant={location.status === "ready" ? "secondary" : "outline"}
-        size="sm"
         onClick={requestLocation}
         disabled={location.status === "locating"}
+        className={cn(
+          "h-9 gap-2 rounded-full px-4 text-sm",
+          location.status === "ready" ? "text-primary" : "bg-card",
+        )}
       >
         {location.status === "locating" ? (
           <Loader2 className="animate-spin" />
