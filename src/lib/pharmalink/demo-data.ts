@@ -1,117 +1,158 @@
-// DEMO DATA ONLY. Used when SUPABASE_URL / SUPABASE_ANON_KEY are not set, so the
-// website can be developed before the inventory/POS database is ready.
+// DEMO DATA ONLY, shaped exactly like Sein's pharmalink_public views.
+// Used until PHARMALINK_PUBLIC_DATABASE_URL is set. The site shows a
+// "Demo data" banner in this mode.
 //
-// Pharmacy names and locations come from the pilot list in the PharmaLink paper.
-// Stock levels are made up. The site shows a "Demo data" banner in this mode.
-// Coordinates decoded from Plus Codes are accurate; the ones marked
-// "approximate" were placed by street name and must be confirmed with the pharmacy.
+// Pharmacy names and places come from the pilot list in the PharmaLink paper.
+// Stock and hours are made up. Coordinates decoded from Plus Codes are
+// accurate; those marked "approximate" were placed by street name.
 
-import type { MedicineCategory, Pharmacy } from "./types";
+import type { Classification, DayOfWeek, OpeningHoursViewRow, PharmacyViewRow } from "./views";
 
-export const DEMO_PHARMACIES: Pharmacy[] = [
+export const DEMO_PHARMACIES: PharmacyViewRow[] = [
   {
-    id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0001",
-    name: "Quali-Meds",
-    address: "Trece Martires - Indang Rd, Trece Martires City, 4109 Cavite",
-    city: "Trece Martires City",
-    contact_number: "0931 029 9557",
+    pharmacy_id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0001",
+    pharmacy_name: "Quali-Meds",
+    street_address: "Trece Martires - Indang Rd",
+    barangay: "Luciano",
+    area: "Trece Martires City",
+    province: "Cavite",
     latitude: 14.275313, // Plus Code 7VGC+4FC
     longitude: 120.871141,
-    opening_hours: null,
+    contact_number: "0931 029 9557",
   },
   {
-    id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0002",
-    name: "Maxcef Pharmacy",
-    address: "Unit B, Metropolis Greens, J Bldg, JLAS, Manggahan, General Trias, Cavite",
-    city: "General Trias City",
-    contact_number: null,
+    pharmacy_id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0002",
+    pharmacy_name: "Maxcef Pharmacy",
+    street_address: "Unit B, Metropolis Greens, J Bldg, JLAS",
+    barangay: "Manggahan",
+    area: "General Trias City",
+    province: "Cavite",
     latitude: 14.2968, // approximate
     longitude: 120.9135,
-    opening_hours: null,
+    contact_number: "0917 555 0102",
   },
   {
-    id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0003",
-    name: "Family Doc Clinic Diagnostics Pharmacy",
-    address: "Juanito R. Remulla Senior Rd, General Trias, Cavite",
-    city: "General Trias City",
-    contact_number: null,
+    pharmacy_id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0003",
+    pharmacy_name: "Family Doc Clinic Diagnostics Pharmacy",
+    street_address: "Juanito R. Remulla Senior Rd",
+    barangay: "Pasong Camachile I",
+    area: "General Trias City",
+    province: "Cavite",
     latitude: 14.292262, // Plus Code 7WR5+WX5
     longitude: 120.909984,
-    opening_hours: null,
+    contact_number: "0917 555 0103",
   },
   {
-    id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0004",
-    name: "Bayani Med Pharmacy",
-    address: "Noemi Bldg, 098 Prinza St, Manggahan, General Trias, 4107 Cavite",
-    city: "General Trias City",
-    contact_number: "0933 076 8081",
+    pharmacy_id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0004",
+    pharmacy_name: "Bayani Med Pharmacy",
+    street_address: "Noemi Bldg, 098 Prinza St",
+    barangay: "Manggahan",
+    area: "General Trias City",
+    province: "Cavite",
     latitude: 14.2952, // approximate
     longitude: 120.9172,
-    opening_hours: null,
+    contact_number: "0933 076 8081",
   },
   {
-    id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0005",
-    name: "STATMeds Pharmacy",
-    address: "Crisanto M. De Los Reyes Ave, General Trias, Cavite",
-    city: "General Trias City",
-    contact_number: null,
+    pharmacy_id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0005",
+    pharmacy_name: "STATMeds Pharmacy",
+    street_address: "Crisanto M. De Los Reyes Ave",
+    barangay: "Pasong Camachile I",
+    area: "General Trias City",
+    province: "Cavite",
     latitude: 14.290413, // Plus Code 7WR6+5R7
     longitude: 120.912047,
-    opening_hours: null,
+    contact_number: "0917 555 0105",
   },
   {
-    id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0006",
-    name: "Happy Med Pharmacy",
-    address: "General Trias, Cavite",
-    city: "General Trias City",
-    contact_number: null,
+    pharmacy_id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0006",
+    pharmacy_name: "Happy Med Pharmacy",
+    street_address: "Governor's Drive",
+    barangay: "Pasong Camachile II",
+    area: "General Trias City",
+    province: "Cavite",
     latitude: 14.297688, // Plus Code 7WX5+3P
     longitude: 120.909312,
-    opening_hours: null,
+    contact_number: "0917 555 0106",
   },
   {
-    id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0007",
-    name: "SBG-CE Pharmacy",
-    address: "Buenavista 1, General Trias, Cavite",
-    city: "General Trias City",
-    contact_number: null,
+    pharmacy_id: "5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c0007",
+    pharmacy_name: "SBG-CE Pharmacy",
+    street_address: "Buenavista Rd",
+    barangay: "Buenavista I",
+    area: "General Trias City",
+    province: "Cavite",
     latitude: 14.3405, // approximate
     longitude: 120.9093,
-    opening_hours: null,
+    contact_number: "0917 555 0107",
   },
 ];
 
-export interface DemoMedicine {
-  generic_name: string;
-  brand_name: string | null;
-  strength: string;
-  dosage_form: string;
-  category: MedicineCategory;
+const WEEKDAYS: DayOfWeek[] = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+const ALL_DAYS: DayOfWeek[] = [...WEEKDAYS, "SATURDAY", "SUNDAY"];
+
+function hours(pharmacyNo: number, days: DayOfWeek[], opens: string, closes: string): OpeningHoursViewRow[] {
+  const pharmacy_id = `5b0f8a52-6c1e-4a51-9d0e-1f3a2b7c000${pharmacyNo}`;
+  return days.map((day_of_week) => ({ pharmacy_id, day_of_week, opens_at: opens, closes_at: closes }));
 }
 
+/** A mix of every case the views can return. Pharmacy 5 has not given its hours. */
+export const DEMO_HOURS: OpeningHoursViewRow[] = [
+  ...hours(1, ALL_DAYS, "07:00:00", "21:00:00"),
+  ...hours(2, [...WEEKDAYS, "SATURDAY"], "08:00:00", "20:00:00"), // closed Sunday
+  ...hours(3, ALL_DAYS, "00:00:00", "23:59:00"), // open all day
+  ...hours(4, WEEKDAYS, "08:00:00", "21:00:00"),
+  ...hours(4, ["SATURDAY", "SUNDAY"], "09:00:00", "18:00:00"),
+  ...hours(6, ALL_DAYS, "08:00:00", "22:00:00"),
+  ...hours(7, [...WEEKDAYS, "SATURDAY"], "07:30:00", "19:30:00"),
+];
+
+export interface DemoMedicine {
+  medicine_id: string;
+  generic_name: string;
+  strength: string;
+  form: string;
+  classification: Classification;
+  /** null = unbranded generic (or a brand not yet checked) */
+  brands: (string | null)[];
+}
+
+const m = (
+  n: number,
+  generic_name: string,
+  strength: string,
+  form: string,
+  classification: Classification,
+  brands: (string | null)[],
+): DemoMedicine => ({
+  medicine_id: `9a1c0000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+  generic_name,
+  strength,
+  form,
+  classification,
+  brands,
+});
+
 export const DEMO_MEDICINES: DemoMedicine[] = [
-  { generic_name: "Paracetamol", brand_name: "Biogesic", strength: "500 mg", dosage_form: "Tablet", category: "otc" },
-  { generic_name: "Paracetamol", brand_name: "Calpol", strength: "250 mg/5 mL", dosage_form: "Syrup", category: "otc" },
-  { generic_name: "Ibuprofen", brand_name: "Advil", strength: "200 mg", dosage_form: "Softgel", category: "otc" },
-  { generic_name: "Mefenamic Acid", brand_name: "Dolfenal", strength: "500 mg", dosage_form: "Tablet", category: "otc" },
-  { generic_name: "Cetirizine", brand_name: "Virlix", strength: "10 mg", dosage_form: "Tablet", category: "otc" },
-  { generic_name: "Loratadine", brand_name: "Claritin", strength: "10 mg", dosage_form: "Tablet", category: "otc" },
-  { generic_name: "Loperamide", brand_name: "Diatabs", strength: "2 mg", dosage_form: "Capsule", category: "otc" },
-  { generic_name: "Oral Rehydration Salts", brand_name: "Hydrite", strength: "Sachet", dosage_form: "Powder", category: "otc" },
-  { generic_name: "Carbocisteine", brand_name: "Solmux", strength: "500 mg", dosage_form: "Capsule", category: "otc" },
-  { generic_name: "Ambroxol", brand_name: "Mucosolvan", strength: "30 mg", dosage_form: "Tablet", category: "otc" },
-  { generic_name: "Phenylephrine + Chlorphenamine + Paracetamol", brand_name: "Neozep", strength: "10 mg/2 mg/500 mg", dosage_form: "Tablet", category: "otc" },
-  { generic_name: "Lagundi Leaf", brand_name: "Ascof", strength: "600 mg", dosage_form: "Tablet", category: "otc" },
-  { generic_name: "Ascorbic Acid", brand_name: "Poten-Cee", strength: "500 mg", dosage_form: "Tablet", category: "otc" },
-  { generic_name: "Ferrous Sulfate + Folic Acid", brand_name: "Hemarate FA", strength: "Tablet", dosage_form: "Tablet", category: "otc" },
-  { generic_name: "Amoxicillin", brand_name: "Amoxil", strength: "500 mg", dosage_form: "Capsule", category: "prescription" },
-  { generic_name: "Co-Amoxiclav", brand_name: "Augmentin", strength: "625 mg", dosage_form: "Tablet", category: "prescription" },
-  { generic_name: "Cefalexin", brand_name: null, strength: "500 mg", dosage_form: "Capsule", category: "prescription" },
-  { generic_name: "Losartan", brand_name: "Cozaar", strength: "50 mg", dosage_form: "Tablet", category: "prescription" },
-  { generic_name: "Amlodipine", brand_name: "Norvasc", strength: "5 mg", dosage_form: "Tablet", category: "prescription" },
-  { generic_name: "Metformin", brand_name: "Glucophage", strength: "500 mg", dosage_form: "Tablet", category: "prescription" },
-  { generic_name: "Atorvastatin", brand_name: "Lipitor", strength: "20 mg", dosage_form: "Tablet", category: "prescription" },
-  { generic_name: "Metoprolol", brand_name: null, strength: "50 mg", dosage_form: "Tablet", category: "prescription" },
-  { generic_name: "Omeprazole", brand_name: null, strength: "20 mg", dosage_form: "Capsule", category: "prescription" },
-  { generic_name: "Salbutamol", brand_name: "Ventolin", strength: "100 mcg/dose", dosage_form: "Inhaler", category: "prescription" },
+  m(1, "Paracetamol", "500mg", "tablet", "OTC", ["Biogesic", null]),
+  m(2, "Paracetamol", "250mg/5mL", "syrup", "OTC", ["Calpol"]),
+  m(3, "Ibuprofen", "200mg", "capsule", "OTC", ["Advil"]),
+  m(4, "Mefenamic Acid", "500mg", "tablet", "OTC", ["Dolfenal", null]),
+  m(5, "Cetirizine", "10mg", "tablet", "OTC", ["Virlix"]),
+  m(6, "Loratadine", "10mg", "tablet", "OTC", ["Claritin"]),
+  m(7, "Loperamide", "2mg", "capsule", "OTC", ["Diatabs"]),
+  m(8, "Oral Rehydration Salts", "20.5g", "powder sachet", "HOUSEHOLD_REMEDY", ["Hydrite"]),
+  m(9, "Carbocisteine", "500mg", "capsule", "OTC", ["Solmux"]),
+  m(10, "Ambroxol", "30mg", "tablet", "OTC", ["Mucosolvan"]),
+  m(11, "Lagundi Leaf", "600mg", "tablet", "OTC", ["Ascof"]),
+  m(12, "Ascorbic Acid", "500mg", "tablet", "OTC", ["Poten-Cee", null]),
+  m(13, "Amoxicillin", "500mg", "capsule", "RX", ["Amoxil", null]),
+  m(14, "Co-Amoxiclav", "625mg", "tablet", "RX", ["Augmentin"]),
+  m(15, "Cefalexin", "500mg", "capsule", "RX", [null]),
+  m(16, "Losartan", "50mg", "tablet", "RX", ["Cozaar", null]),
+  m(17, "Amlodipine", "5mg", "tablet", "RX", ["Norvasc", null]),
+  m(18, "Metformin", "500mg", "tablet", "RX", ["Glucophage"]),
+  m(19, "Atorvastatin", "20mg", "tablet", "RX", ["Lipitor"]),
+  m(20, "Omeprazole", "20mg", "capsule", "RX", [null]),
+  m(21, "Salbutamol", "100mcg/dose", "inhaler", "RX", ["Ventolin"]),
 ];

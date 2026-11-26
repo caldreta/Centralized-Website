@@ -160,7 +160,6 @@
 }
 .pl-pin > span { transform: rotate(45deg); }
 .pl-pin[data-status="in_stock"] { background: var(--status-in); }
-.pl-pin[data-status="low_stock"] { background: var(--status-low); }
 .pl-pin[data-status="out_of_stock"] { background: var(--status-out); }
 .pl-pin[data-status="none"] { background: var(--primary); }
 .pl-pin[data-selected="true"] { outline: 3px solid var(--foreground); outline-offset: 1px; }

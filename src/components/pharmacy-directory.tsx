@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from "react";
 import { ListMapLayout, type ListMapView } from "@/components/list-map-layout";
 import { LocationButton } from "@/components/location-button";
 import { PharmacyMap } from "@/components/map/pharmacy-map";
+import { OpenStatus } from "@/components/opening-hours";
 import { PharmacyActions } from "@/components/pharmacy-actions";
 import { useUserLocation } from "@/hooks/use-user-location";
 import { distanceKm, formatDistance } from "@/lib/pharmalink/format";
@@ -36,6 +37,18 @@ export function PharmacyDirectory({ pharmacies }: { pharmacies: Pharmacy[] }) {
     setSelectedId(id);
     setView("map");
   }, []);
+
+  if (pharmacies.length === 0) {
+    return (
+      <div className="space-y-2 rounded-2xl border border-dashed bg-card/60 p-8 text-center">
+        <p className="font-semibold">No pharmacies are listed yet</p>
+        <p className="mx-auto max-w-md text-sm text-muted-foreground">
+          The pilot pharmacies in Trece Martires, Tanza and General Trias appear here as soon as
+          each one finishes counting its stock. Please check back soon.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -80,6 +93,7 @@ export function PharmacyDirectory({ pharmacies }: { pharmacies: Pharmacy[] }) {
                   </Link>
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">{pharmacy.address}</p>
+                <OpenStatus hours={pharmacy.hours} className="mt-1" />
                 {distance !== null && (
                   <p className="mt-1 inline-flex items-center gap-1 text-sm font-medium">
                     <MapPin className="size-3.5 text-primary" aria-hidden="true" />

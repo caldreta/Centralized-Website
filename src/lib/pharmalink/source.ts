@@ -1,24 +1,30 @@
 import "server-only";
 
-import type { MedicineAvailability, Pharmacy } from "./types";
+import type { OpeningHoursViewRow, PharmacyViewRow, ProductAvailabilityViewRow } from "./views";
 
-/** Everything the website needs from the database. Read-only by design. */
+/** Everything the website reads. Read-only by design; returns raw view rows. */
 export interface DataSource {
-  readonly kind: "supabase" | "demo";
-  listPharmacies(): Promise<Pharmacy[]>;
-  /** Medicines whose generic or brand name contains `term` (already sanitized). */
-  searchAvailability(term: string): Promise<MedicineAvailability[]>;
-  listPharmacyStock(pharmacyId: string): Promise<MedicineAvailability[]>;
+  readonly kind: "database" | "demo";
+  listPharmacies(): Promise<PharmacyViewRow[]>;
+  listOpeningHours(): Promise<OpeningHoursViewRow[]>;
+  /** Rows whose generic, brand or full medicine name contains `term` (already sanitized). */
+  searchProducts(term: string): Promise<ProductAvailabilityViewRow[]>;
+  listPharmacyProducts(pharmacyId: string): Promise<ProductAvailabilityViewRow[]>;
 }
 
-export function isSupabaseConfigured(): boolean {
-  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
+/** Connection string of the read-only `pharmalink_public_api` login (server only). */
+export function databaseUrl(): string | undefined {
+  return process.env.PHARMALINK_PUBLIC_DATABASE_URL || undefined;
+}
+
+export function isDatabaseConfigured(): boolean {
+  return Boolean(databaseUrl());
 }
 
 export async function getDataSource(): Promise<DataSource> {
-  if (isSupabaseConfigured()) {
-    const { supabaseSource } = await import("./supabase-source");
-    return supabaseSource;
+  if (isDatabaseConfigured()) {
+    const { databaseSource } = await import("./database-source");
+    return databaseSource;
   }
   const { demoSource } = await import("./demo-source");
   return demoSource;

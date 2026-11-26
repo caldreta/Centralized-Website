@@ -8,6 +8,7 @@ import { ListMapLayout, type ListMapView } from "@/components/list-map-layout";
 import { LocationButton } from "@/components/location-button";
 import { PharmacyMap } from "@/components/map/pharmacy-map";
 import type { MapPoint } from "@/components/map/types";
+import { OpenStatus } from "@/components/opening-hours";
 import { PharmacyActions } from "@/components/pharmacy-actions";
 import { PopularSearches } from "@/components/popular-searches";
 import { RelativeTime } from "@/components/relative-time";
@@ -166,6 +167,7 @@ export function SearchResults({
                             <StatusBadge status={row.best_status} size="md" />
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">{row.pharmacy.address}</p>
+                          <OpenStatus hours={row.pharmacy.hours} className="mt-1" />
                           {row.distance !== null && (
                             <p className="mt-1 inline-flex items-center gap-1 text-sm font-medium">
                               <MapPin className="size-3.5 text-primary" aria-hidden="true" />
@@ -178,7 +180,7 @@ export function SearchResults({
                       <ul className="mt-4 divide-y divide-border/60 rounded-xl bg-muted/60">
                         {row.matches.map((m) => (
                           <li
-                            key={m.medicine_id}
+                            key={m.key}
                             className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3.5 py-2.5"
                           >
                             <div className="min-w-0">

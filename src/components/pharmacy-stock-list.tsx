@@ -86,7 +86,7 @@ export function PharmacyStockList({
         <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border bg-card shadow-[0_1px_3px_rgb(15_40_40/0.04)]">
           {rows.map((m) => (
             <li
-              key={m.medicine_id}
+              key={m.key}
               className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3"
             >
               <div className="min-w-0">

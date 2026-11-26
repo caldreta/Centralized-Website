@@ -1,4 +1,4 @@
-import { CircleCheck, CircleMinus, CircleX } from "lucide-react";
+import { CircleCheck, CircleX } from "lucide-react";
 
 import { STATUS_LABEL } from "@/lib/pharmalink/format";
 import type { StockStatus } from "@/lib/pharmalink/types";
@@ -6,13 +6,11 @@ import { cn } from "@/lib/utils";
 
 const STYLES: Record<StockStatus, string> = {
   in_stock: "bg-status-in/12 text-status-in-text",
-  low_stock: "bg-status-low/18 text-status-low-text",
   out_of_stock: "bg-muted text-muted-foreground",
 };
 
 const ICONS = {
   in_stock: CircleCheck,
-  low_stock: CircleMinus,
   out_of_stock: CircleX,
 } as const;
 

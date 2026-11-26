@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { PharmacyMap } from "@/components/map/pharmacy-map";
+import { OpeningHoursTable, OpenStatus } from "@/components/opening-hours";
 import { PharmacyActions } from "@/components/pharmacy-actions";
 import { PharmacyStockList } from "@/components/pharmacy-stock-list";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,6 +66,7 @@ async function PharmacyDetails({
               <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-balance">
                 {pharmacy.name}
               </h1>
+              <OpenStatus hours={pharmacy.hours} className="mt-1.5" />
             </div>
             <dl className="space-y-2 text-sm">
               <div className="flex items-start gap-2.5">
@@ -72,13 +74,6 @@ async function PharmacyDetails({
                 <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <dd>{pharmacy.address}</dd>
               </div>
-              {pharmacy.opening_hours && (
-                <div className="flex items-start gap-2.5">
-                  <dt className="sr-only">Opening hours</dt>
-                  <Clock className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <dd>{pharmacy.opening_hours}</dd>
-                </div>
-              )}
               {pharmacy.contact_number && (
                 <div className="flex items-start gap-2.5">
                   <dt className="sr-only">Phone</dt>
@@ -93,6 +88,16 @@ async function PharmacyDetails({
             </dl>
             <PharmacyActions pharmacy={pharmacy} />
           </header>
+
+          <section
+            aria-labelledby="hours-heading"
+            className="rounded-2xl border bg-card p-5 shadow-[0_1px_3px_rgb(15_40_40/0.04)] sm:p-6"
+          >
+            <h2 id="hours-heading" className="mb-3 flex items-center gap-2 text-base font-semibold">
+              <Clock className="size-4 text-primary" aria-hidden="true" /> Opening hours
+            </h2>
+            <OpeningHoursTable hours={pharmacy.hours} />
+          </section>
 
           <section aria-labelledby="stock-heading" className="space-y-3">
             <h2 id="stock-heading" className="text-lg font-semibold">

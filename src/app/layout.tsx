@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { isSupabaseConfigured } from "@/lib/pharmalink/source";
+import { isDatabaseConfigured } from "@/lib/pharmalink/source";
 
 import "./globals.css";
 
@@ -24,7 +24,7 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  const demo = !isSupabaseConfigured();
+  const demo = !isDatabaseConfigured();
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       {/* pb-16 keeps content clear of the phone tab bar */}

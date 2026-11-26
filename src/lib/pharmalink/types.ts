@@ -1,24 +1,40 @@
-// Shapes of the two read-only views in supabase/website-contract.sql.
-// Keep these in sync with that file.
+// What the website's pages work with. Built from the view rows in ./views.ts
+// by ./queries.ts, so a change in the views is absorbed in one place.
 
-export type City = "Trece Martires City" | "Tanza" | "General Trias City";
+import type { DayOfWeek } from "./views";
 
-export type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
+export type { DayOfWeek };
 
+/** The views report only these two (no "low stock", by design: it would hint at quantities). */
+export type StockStatus = "in_stock" | "out_of_stock";
+
+/** Only RX needs a prescription; OTC and household remedies don't. */
 export type MedicineCategory = "prescription" | "otc";
+
+export interface OpeningHours {
+  day: DayOfWeek;
+  /** "HH:MM", Philippine time */
+  opens: string;
+  /** "HH:MM", Philippine time */
+  closes: string;
+}
 
 export interface Pharmacy {
   id: string;
   name: string;
+  /** Full address for display. */
   address: string;
   city: string;
   contact_number: string | null;
   latitude: number;
   longitude: number;
-  opening_hours: string | null;
+  /** Open days only. Empty = the pharmacy has not given its hours yet. */
+  hours: OpeningHours[];
 }
 
 export interface MedicineAvailability {
+  /** pharmacy_id + medicine_id + brand_name: unique per row. */
+  key: string;
   pharmacy_id: string;
   medicine_id: string;
   generic_name: string;

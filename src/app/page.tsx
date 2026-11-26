@@ -41,7 +41,9 @@ export default async function HomePage() {
         <div className="relative mx-auto max-w-3xl space-y-7 px-4 pt-12 pb-14 text-center sm:pt-20 sm:pb-20">
           <p className="mx-auto inline-flex items-center gap-2 rounded-full border bg-card/80 px-3 py-1 text-xs font-medium text-muted-foreground">
             <span className="size-1.5 rounded-full bg-status-in" aria-hidden="true" />
-            {pharmacies.length} pharmacies in Trece Martires, Tanza & General Trias
+            {pharmacies.length > 0
+              ? `${pharmacies.length} ${pharmacies.length === 1 ? "pharmacy" : "pharmacies"} in Trece Martires, Tanza & General Trias`
+              : "Pilot pharmacies in Trece Martires, Tanza & General Trias are joining soon"}
           </p>
           <div className="space-y-3">
             <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
@@ -83,8 +85,14 @@ export default async function HomePage() {
               Participating pharmacies
             </h2>
             <p className="text-sm text-muted-foreground">
-              {pharmacies.length} {pharmacies.length === 1 ? "pharmacy" : "pharmacies"} across{" "}
-              {cities.size} {cities.size === 1 ? "city" : "cities"} in Cavite
+              {pharmacies.length > 0 ? (
+                <>
+                  {pharmacies.length} {pharmacies.length === 1 ? "pharmacy" : "pharmacies"} across{" "}
+                  {cities.size} {cities.size === 1 ? "city" : "cities"} in Cavite
+                </>
+              ) : (
+                "The first pharmacies appear here once they finish counting their stock."
+              )}
             </p>
           </div>
           <Link
