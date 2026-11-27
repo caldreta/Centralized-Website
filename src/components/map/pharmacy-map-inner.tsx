@@ -3,13 +3,40 @@
 import "leaflet/dist/leaflet.css";
 
 import L from "leaflet";
-import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 import { directionsUrl } from "@/lib/pharmalink/format";
 
 import type { MapPoint, PharmacyMapProps } from "./types";
+
+// WHY THIS IS HAND-WRITTEN (not react-leaflet):
+// Next.js keeps recently visited pages alive in the background. When a page is
+// hidden, React runs every effect's clean-up; when it is shown again, it runs
+// the effects again. react-leaflet creates its map once (in a ref callback), so
+// after a hide/show it kept using a map that had already been removed and
+// crashed ("Map container is being reused", "reading 'appendChild'"), which
+// showed the site's error page when switching pages quickly.
+// Here the map is created in an effect and removed in its clean-up, so every
+// show gets a brand-new map.
+
+// Leaflet bug guard: a zoom animation schedules _onZoomTransitionEnd 250 ms
+// later. If the map is removed in between, that timer touches the deleted map
+// pane and throws ("reading '_leaflet_pos'"). Skip it once the map is gone.
+type LeafletMapInternals = { _mapPane?: HTMLElement; _animatingZoom?: boolean; _onZoomTransitionEnd: () => void };
+const mapProto = L.Map.prototype as unknown as LeafletMapInternals;
+if (!(mapProto._onZoomTransitionEnd as { __guarded?: boolean }).__guarded) {
+  const original = mapProto._onZoomTransitionEnd;
+  const guarded = function (this: LeafletMapInternals) {
+    if (!this._mapPane) {
+      this._animatingZoom = false;
+      return;
+    }
+    original.call(this);
+  };
+  (guarded as { __guarded?: boolean }).__guarded = true;
+  mapProto._onZoomTransitionEnd = guarded;
+}
 
 /** Centre of the pilot area (Trece Martires / Tanza / General Trias). */
 const PILOT_CENTER: L.LatLngTuple = [14.33, 120.89];
@@ -44,69 +71,22 @@ function escapeHtml(text: string) {
   return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
-/**
- * Keeps the view sensible: fits all pins when the set changes, flies to the
- * selected pin, and re-measures when the map is revealed (the phone List/Map
- * switch hides it with display:none, which Leaflet sees as a 0×0 map).
- */
-function MapController({
-  points,
-  user,
-  selectedId,
-}: Pick<PharmacyMapProps, "points" | "user" | "selectedId">) {
-  const map = useMap();
-  const key =
-    points.map((p) => p.id).join(",") + (user ? `|${user.latitude},${user.longitude}` : "");
-  const selected = points.find((p) => p.id === selectedId) ?? null;
-
-  const isVisible = useCallback(() => map.getContainer().clientWidth > 0, [map]);
-
-  const fitAll = useCallback(() => {
-    const coords: L.LatLngTuple[] = points.map((p) => [p.latitude, p.longitude]);
-    if (user) coords.push([user.latitude, user.longitude]);
-    if (coords.length === 0) return;
-    if (coords.length === 1) map.setView(coords[0], 16);
-    else map.fitBounds(L.latLngBounds(coords), { padding: [40, 40], maxZoom: 16 });
-    // Refit only when the set of points changes, not on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, key]);
-
-  const showCurrent = useCallback(() => {
-    if (selected) map.setView([selected.latitude, selected.longitude], Math.max(map.getZoom(), 15));
-    else fitAll();
-  }, [map, selected, fitAll]);
-
-  // Latest "what should be on screen", for the resize observer below.
-  const showCurrentRef = useRef(showCurrent);
-  useEffect(() => {
-    showCurrentRef.current = showCurrent;
-  }, [showCurrent]);
-
-  useEffect(() => {
-    if (isVisible()) fitAll();
-  }, [fitAll, isVisible]);
-
-  useEffect(() => {
-    if (selected && isVisible()) {
-      map.flyTo([selected.latitude, selected.longitude], Math.max(map.getZoom(), 15));
-    }
-  }, [map, selected, isVisible]);
-
-  useEffect(() => {
-    const el = map.getContainer();
-    let wasHidden = el.clientWidth === 0;
-    const observer = new ResizeObserver(() => {
-      map.invalidateSize();
-      const hidden = el.clientWidth === 0;
-      if (wasHidden && !hidden) showCurrentRef.current();
-      wasHidden = hidden;
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [map]);
-
-  return null;
+function popupHtml(point: MapPoint): string {
+  const detail = point.popupDetail ? `<p class="text-xs">${escapeHtml(point.popupDetail)}</p>` : "";
+  const view = point.href
+    ? `<a href="${escapeHtml(point.href)}" data-internal class="text-primary underline">View pharmacy</a>`
+    : "";
+  return `<div class="min-w-44 space-y-1.5">
+    <p class="text-sm font-semibold">${escapeHtml(point.name)}</p>
+    ${detail}
+    <div class="flex gap-3 pt-0.5 text-xs font-medium">
+      <a href="${escapeHtml(directionsUrl(point))}" target="_blank" rel="noopener noreferrer" class="text-primary underline">Directions</a>
+      ${view}
+    </div>
+  </div>`;
 }
+
+const isVisible = (map: L.Map) => map.getContainer().clientWidth > 0;
 
 export default function PharmacyMapInner({
   points,
@@ -115,61 +95,131 @@ export default function PharmacyMapInner({
   onSelect,
   className,
 }: PharmacyMapProps) {
-  const markers = useMemo(
-    () =>
-      points.map((point) => (
-        <Marker
-          key={point.id}
-          position={[point.latitude, point.longitude]}
-          icon={pinIcon(point, point.id === selectedId)}
-          title={point.name}
-          alt={point.name}
-          eventHandlers={onSelect ? { click: () => onSelect(point.id) } : undefined}
-        >
-          <Popup>
-            <div className="min-w-44 space-y-1.5">
-              <p className="text-sm font-semibold">{point.name}</p>
-              {point.popupDetail && <p className="text-xs">{point.popupDetail}</p>}
-              <div className="flex gap-3 pt-0.5 text-xs font-medium">
-                <a
-                  href={directionsUrl(point)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary underline"
-                >
-                  Directions
-                </a>
-                {point.href && (
-                  <Link href={point.href} className="text-primary underline">
-                    View pharmacy
-                  </Link>
-                )}
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-      )),
-    [points, selectedId, onSelect],
-  );
+  const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef(new Map<string, L.Marker>());
 
-  return (
-    <MapContainer
-      center={PILOT_CENTER}
-      zoom={12}
-      scrollWheelZoom={false}
-      className={className}
-      style={{ height: "100%", width: "100%" }}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        maxZoom={19}
-      />
-      {markers}
-      {user && (
-        <Marker position={[user.latitude, user.longitude]} icon={userIcon} title="Your location" />
-      )}
-      <MapController points={points} user={user} selectedId={selectedId} />
-    </MapContainer>
-  );
+  // Latest props for long-lived listeners (resize observer, marker clicks).
+  // Declared first, so it runs before the effects below in every commit.
+  const latest = useRef({ points, user, selectedId, onSelect, router });
+  useEffect(() => {
+    latest.current = { points, user, selectedId, onSelect, router };
+  });
+
+  // Callers may build `points` anew on every render; key the effects on the
+  // content instead, so a click doesn't rebuild the pins and close a popup.
+  const pointsKey = points
+    .map((p) => [p.id, p.latitude, p.longitude, p.status, p.label, p.name, p.popupDetail, p.href].join("~"))
+    .join("|");
+  const userKey = user ? `${user.latitude},${user.longitude}` : "";
+
+  // 1) Create the map; remove it on clean-up. Runs again on every show.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const markers = markersRef.current;
+
+    const map = L.map(container, { center: PILOT_CENTER, zoom: 12, scrollWheelZoom: false });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
+    mapRef.current = map;
+
+    // "View pharmacy" links inside popups navigate without a full page reload.
+    const onClick = (event: MouseEvent) => {
+      const link = (event.target as HTMLElement).closest<HTMLAnchorElement>("a[data-internal]");
+      if (!link) return;
+      event.preventDefault();
+      latest.current.router.push(link.getAttribute("href")!);
+    };
+    container.addEventListener("click", onClick);
+
+    // Re-measure when revealed (the phone List/Map switch hides it with display:none).
+    let wasHidden = !isVisible(map);
+    const observer = new ResizeObserver(() => {
+      if (mapRef.current !== map) return;
+      map.invalidateSize();
+      const hidden = !isVisible(map);
+      if (wasHidden && !hidden) showCurrent(map, latest.current);
+      wasHidden = hidden;
+    });
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+      container.removeEventListener("click", onClick);
+      markers.clear();
+      mapRef.current = null;
+      map.off();
+      map.stop();
+      map.remove();
+    };
+  }, []);
+
+  // 2) Pins (and the "you are here" dot). Rebuilt when the set of points changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const { points, user } = latest.current;
+    const group = L.layerGroup().addTo(map);
+    const markers = markersRef.current;
+    markers.clear();
+    for (const point of points) {
+      const marker = L.marker([point.latitude, point.longitude], {
+        icon: pinIcon(point, point.id === latest.current.selectedId),
+        title: point.name,
+        alt: point.name,
+        keyboard: true,
+      })
+        .bindPopup(popupHtml(point))
+        .on("click", () => latest.current.onSelect?.(point.id))
+        .addTo(group);
+      markers.set(point.id, marker);
+    }
+    if (user) {
+      L.marker([user.latitude, user.longitude], { icon: userIcon, title: "Your location", interactive: false }).addTo(group);
+    }
+    if (isVisible(map)) fitAll(map, points, user);
+
+    return () => {
+      markers.clear();
+      if (mapRef.current === map) group.remove();
+    };
+  }, [pointsKey, userKey]);
+
+  // 3) Highlight the selected pin and fly to it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const { points } = latest.current;
+    for (const point of points) {
+      markersRef.current.get(point.id)?.setIcon(pinIcon(point, point.id === selectedId));
+    }
+    const target = points.find((p) => p.id === selectedId);
+    if (target && isVisible(map)) {
+      map.flyTo([target.latitude, target.longitude], Math.max(map.getZoom(), 15));
+    }
+  }, [selectedId, pointsKey]);
+
+  return <div ref={containerRef} className={className} style={{ height: "100%", width: "100%" }} />;
+}
+
+function fitAll(map: L.Map, points: MapPoint[], user: PharmacyMapProps["user"]) {
+  const coords: L.LatLngTuple[] = points.map((p) => [p.latitude, p.longitude]);
+  if (user) coords.push([user.latitude, user.longitude]);
+  if (coords.length === 0) return;
+  if (coords.length === 1) map.setView(coords[0], 16);
+  else map.fitBounds(L.latLngBounds(coords), { padding: [40, 40], maxZoom: 16 });
+}
+
+function showCurrent(
+  map: L.Map,
+  { points, user, selectedId }: Pick<PharmacyMapProps, "points" | "user" | "selectedId">,
+) {
+  const selected = points.find((p) => p.id === selectedId);
+  if (selected) map.setView([selected.latitude, selected.longitude], Math.max(map.getZoom(), 15));
+  else fitAll(map, points, user);
 }

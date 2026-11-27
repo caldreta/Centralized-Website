@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
+import { MapErrorBoundary } from "./map-error-boundary";
 import type { PharmacyMapProps } from "./types";
 
 // Leaflet touches `window` on import, so it only loads in the browser.
@@ -19,11 +20,16 @@ export function PharmacyMap({
 }: PharmacyMapProps & { className?: string }) {
   return (
     <div
-      className={cn("relative isolate overflow-hidden rounded-2xl border bg-muted shadow-[0_1px_3px_rgb(15_40_40/0.05)]", className)}
+      className={cn(
+        "relative isolate overflow-hidden rounded-2xl border bg-muted shadow-[0_1px_3px_rgb(15_40_40/0.05)]",
+        className,
+      )}
       role="region"
       aria-label="Map of pharmacies"
     >
-      <PharmacyMapInner {...props} />
+      <MapErrorBoundary>
+        <PharmacyMapInner {...props} />
+      </MapErrorBoundary>
     </div>
   );
 }
